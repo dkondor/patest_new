@@ -55,7 +55,7 @@
 #include "orbtree.h"
 
 /* trees */
-typedef orbtree::rankmultisetC<unsigned int, unsigned int> ranktree;
+typedef orbtree::orbmultisetC<unsigned int, orbtree::NVFunc_Adapter_Simple<orbtree::RankFunc<unsigned int> >, uint32_t > ranktree;
 typedef orbtree::orbmultisetC<unsigned int, orbtree::NVPower2<unsigned int>, uint32_t> exptree;
 		
 		

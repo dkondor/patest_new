@@ -65,7 +65,7 @@ struct set_pow {
 	}
 };
 
-typedef orbtree::rankmultisetC<int64_t, unsigned int, uint32_t> ranktree;
+typedef orbtree::orbmultisetC<unsigned int, orbtree::NVFunc_Adapter_Simple<orbtree::RankFunc<unsigned int> >, uint32_t > ranktree;
 typedef orbtree::orbmultisetC<int64_t, orbtree::NVFunc_Adapter_Vec<set_pow>, uint32_t> exptree;
 
 /* maps -- for more compact representation */
