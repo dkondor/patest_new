@@ -44,7 +44,13 @@
 #include <algorithm>
 
 
+//~ #ifdef USE_STACKED_VECTOR
+#include "vector_stacked.h"
+//~ template <class T> using compact_vector = stacked_vector::vector<T>;
+//~ #else
 #include "vector_realloc.h"
+//~ template <class T> using compact_vector = realloc_vector::vector<T>;
+//~ #endif
 
 /* constexpr if support only for c++17 or newer */
 #if __cplusplus >= 201703L
@@ -348,8 +354,8 @@ namespace orbtree {
 	template<class KeyValueT, class NVTypeT, class IndexType>
 	class NodeAllocatorCompact {
 		protected:
-			static_assert(std::is_trivially_copyable<KeyValueT>::value,
-				"Key and Value must be trivially copyable to use compact flat allocator!\n");
+			//~ static_assert(std::is_trivially_copyable<KeyValueT>::value,
+				//~ "Key and Value must be trivially copyable to use compact flat allocator!\n");
 			typedef IndexType NodeHandle;
 			typedef KeyValueT KeyValue;
 			typedef NVTypeT NVType;
@@ -417,7 +423,12 @@ namespace orbtree {
 			
 		private:
 
-			typedef realloc_vector::vector<Node> node_vector_type;
+#ifdef USE_STACKED_VECTOR
+			typedef stacked_vector::vector<Node> node_vector_type;
+#else			
+			typedef typename std::conditional< std::is_trivially_copyable<KeyValueT>::value,
+				realloc_vector::vector<Node>, stacked_vector::vector<Node> >::type node_vector_type;
+#endif
 			
 			realloc_vector::vector<NVType> nvarray; ///< \brief Vector storing the partial sum of function values in nodes.
 			node_vector_type nodes; ///< \brief Vector storing the node objects.

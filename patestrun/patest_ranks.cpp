@@ -55,20 +55,17 @@
 #include "orbtree.h"
 
 /* trees */
-typedef orbtree::orbmultisetC<unsigned int, orbtree::NVFunc_Adapter_Simple<orbtree::RankFunc<unsigned int> >, uint32_t > ranktree;
-typedef orbtree::orbmultisetC<unsigned int, orbtree::NVPower2<unsigned int>, uint32_t> exptree;
+typedef orbtree::rankmultisetC<unsigned int> ranktree;
+typedef orbtree::orbmultisetC<unsigned int, orbtree::NVPower2<unsigned int> > exptree;
 		
 		
 /* maps -- for more compact representation */
 struct map_rank {
-	typedef std::pair<unsigned int,unsigned int> argument_type;
-	typedef unsigned int result_type;
 	unsigned int operator () (const std::pair<unsigned int, unsigned int>& p) const { return p.second; }
+	typedef std::pair<unsigned int, unsigned int> argument_type;
+	typedef unsigned int result_type;
 };
 struct map_pow {
-	typedef std::pair<unsigned int,unsigned int> argument_type;
-	typedef double result_type;
-	typedef double ParType;
 	double operator () (const std::pair<unsigned int, unsigned int>&p, double a) const {
 		double x = (double)(p.first);
 		double cnt = (double)(p.second);
@@ -76,8 +73,8 @@ struct map_pow {
 	}
 };
 
-typedef orbtree::orbmapC<unsigned int, unsigned int, orbtree::NVFunc_Adapter_Simple<map_rank>, uint32_t> rankmap;
-typedef orbtree::orbmapC<unsigned int, unsigned int, orbtree::NVFunc_Adapter_Vec<map_pow>, uint32_t> expmap;
+typedef orbtree::simple_mapC<unsigned int, unsigned int, map_rank> rankmap;
+typedef orbtree::orbmapC<unsigned int, unsigned int, orbtree::NVPowerMulti2<std::pair<unsigned int, unsigned int> > > expmap;
 
 template<class tree>
 inline void change_deg_tree(tree& t, unsigned int old_deg, unsigned int new_deg) {
@@ -86,7 +83,7 @@ inline void change_deg_tree(tree& t, unsigned int old_deg, unsigned int new_deg)
 		if(it == t.end()) throw std::runtime_error("degree not found!\n");
 		t.erase(it);
 	}
-	t.insert(new_deg);
+	if(new_deg) t.insert(new_deg);
 }
 
 template<class tree>
@@ -100,12 +97,14 @@ inline void change_deg_map(tree& t, unsigned int old_deg, unsigned int new_deg) 
 	}
 
 	/* try to insert */
-	auto res = t.insert(orbtree::trivial_pair<unsigned int,unsigned int>(new_deg,1U));
-	if(!res.second) {
-		/* already exists, add one */
-		auto it = res.first;
-		unsigned int cnt1 = it->second;
-		it.set_value(cnt1+1);
+	if(new_deg) {
+		auto res = t.insert(orbtree::trivial_pair<unsigned int,unsigned int>(new_deg,1U));
+		if(!res.second) {
+			/* already exists, add one */
+			auto it = res.first;
+			unsigned int cnt1 = it->second;
+			it.set_value(cnt1+1);
+		}
 	}
 }
 
@@ -120,9 +119,68 @@ inline void get_ranks(tree& t, unsigned int deg, T* rank, T* cdf) {
 	t.get_norm_fv(cdf);
 }
 
+template<class tree, class T>
+inline void get_ranks_simple(tree& t, unsigned int deg, T* rank, T* cdf) {
+	if(deg) {
+		auto it = t.lower_bound(deg);
+		if(it == t.end() || it.key() != deg) throw std::runtime_error("degree not found!\n");
+		*rank = t.get_sum_node(it);
+	}
+	t.get_norm_fv(cdf);
+}
 
-int main(int argc, char **argv)
-{
+
+static int strtodint(char* a,unsigned int* delay) {
+	char* a1 = 0;
+	unsigned int delay2 = strtoul(a,&a1,10);
+	if(a1 == a) {
+		return 1;
+		
+	}
+	if(*a1) switch(*a1) {
+		case 'h':
+			*delay = delay2*3600;
+			break;
+		case 'd':
+			*delay = delay2*86400;
+			break;
+		case 'w':
+			*delay = delay2*604800;
+			break;
+		case 'm':
+			*delay = delay2*2592000;
+			break;
+		case 'y':
+			*delay = delay2*31536000;
+			break;
+		case ' ':
+		case '\t':
+		case '\r':
+		case '\n':
+			*delay = delay2;
+			break;
+		default:
+			return 1;
+	}
+	else *delay = delay2;
+	return 0;
+}
+
+/* write out histograms to the given output files; also zeroes out all histograms */
+static void write_histogram(std::vector<std::vector<uint64_t> >& histograms, std::vector<uint64_t>& cnts,
+		double histogram_bins, FILE** out, unsigned int ts) {
+	const size_t nbins = (size_t)ceil(1.0 / histogram_bins);
+	for(size_t i=0;i<histograms.size();i++) {
+		for(size_t j=0;j<nbins;j++) {
+			if(ts) fprintf(out[i], "%u\t", ts);
+			fprintf(out[i], "%f\t%lu\t%lu\n", histogram_bins*((double)j), histograms[i][j], cnts[i]);
+			histograms[i][j] = 0;
+		}
+		cnts[i] = 0;
+	}
+}
+
+int main(int argc, char **argv) {
 	char* outf_base = 0; /* output base filename */
 	std::vector<double> a; /* exponents to use -- if none is given, only ranks are output (to stdout) */
 	bool zip = true; /* should compress output files */
@@ -132,6 +190,8 @@ int main(int argc, char **argv)
 	
 	bool histogram_output = false;
 	double histogram_bins = 0.0001;
+	unsigned int histogram_time_freq = 0; // if this is > 0, write out histograms at this given time intervals
+	
 	
 	for(int i=1;i<argc;i++) {
 		if(argv[i][0] == '-') switch(argv[i][1]) {
@@ -164,6 +224,11 @@ int main(int argc, char **argv)
 			case 'H':
 				histogram_output = true;
 				break;
+			case 'T':
+				if(i+1 == argc || strtodint(argv[i+1],&histogram_time_freq))
+					fprintf(stderr,"Invalid parameter: %s %s!\n",argv[i],argv[i+1]);
+				else i++;
+				break;
 			default:
 				fprintf(stderr,"Unknown parameter: %s!\n",argv[i]);
 				break;
@@ -174,9 +239,9 @@ int main(int argc, char **argv)
 	
 	/* open output files */
 	/* map type ids to output file indexes */
-	const  unsigned int ntypes = 4;
-	const  std::unordered_map<unsigned int,unsigned int> types = { {2,0}, {3,1}, {4,2}, {5,3} };
-	const  char gzip[] = "/bin/gzip -c";
+	const unsigned int ntypes = 4;
+	const std::unordered_map<unsigned int,unsigned int> types = { {2,0}, {3,1}, {4,2}, {5,3} };
+	const char gzip[] = "/bin/gzip -c";
 	
 	if(histogram_output) zip = !zip;
 	
@@ -221,7 +286,7 @@ int main(int argc, char **argv)
 	
 	/* trees -- only one is used depending if exponents are given or not (a has >0 elements) */
 	orbtree::NVPower2<unsigned int> p(a);
-	orbtree::NVFunc_Adapter_Vec<map_pow> p2(a);
+	orbtree::NVPowerMulti2<std::pair<unsigned int,unsigned int> > p2(a);
 	ranktree rt;
 	rankmap rmap;
 	exptree et(p);
@@ -242,9 +307,18 @@ int main(int argc, char **argv)
 		for(std::vector<uint64_t>& h : histograms) h.resize(nbins,0UL);
 	}
 	
+	unsigned int tsnext = 0;
+	unsigned int ts1 = 0;
 	while(rt2.read_line()) {
 		unsigned int type, deg;
-		if(!rt2.read( type, deg )) break;
+		if(!rt2.read( type, deg, ts1 )) break;
+		if(histogram_output && histogram_time_freq) {
+			if(!tsnext) tsnext = ts1 + histogram_time_freq;
+			if(ts1 >= tsnext) {
+				write_histogram(histograms, cnts, histogram_bins, out, tsnext);
+				do tsnext += histogram_time_freq; while(tsnext <= ts1);
+			}
+		}
 		
 		if(type == 0 || type == 1) {
 			/* decrease / increase degree */
@@ -295,8 +369,8 @@ int main(int argc, char **argv)
 			}
 			else {
 				unsigned int rank = 0,cdf;
-				if(use_map) get_ranks(rmap,deg,&rank,&cdf);
-				else get_ranks(rt,deg,&rank,&cdf);
+				if(use_map) get_ranks_simple(rmap,deg,&rank,&cdf);
+				else get_ranks_simple(rt,deg,&rank,&cdf);
 				fprintf(stdout,"%u\t%u\t%u\t%u\n",type,deg,rank,cdf);
 			}
 			l2++;
@@ -314,13 +388,9 @@ int main(int argc, char **argv)
 	
 	if(a.size()) {
 		/* close output files or write output */
-		if(histogram_output) {
-			for(size_t i=0;i<ntypes*a.size();i++) {
-				size_t nbins = (size_t)ceil(1.0 / histogram_bins);
-				for(size_t j=0;j<nbins;j++) fprintf(out[i],"%f\t%lu\t%lu\n",histogram_bins*((double)j),
-					histograms[i][j],cnts[i]);
-			}
-		}
+		if(histogram_output && (!histogram_time_freq || ts1 < tsnext))
+			write_histogram(histograms, cnts, histogram_bins, out, tsnext);
+		
 		for(size_t i=0;i<ntypes*a.size();i++) {
 			FILE* f = out[i];
 			if(zip) pclose(f);

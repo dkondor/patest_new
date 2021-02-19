@@ -56,28 +56,27 @@
 #include "read_table.h"
 
 struct set_pow {
-	typedef int64_t argument_type;
-	typedef double result_type;
-	typedef double ParType;
 	double operator () (int64_t y, double a) const {
 		double x = (double)(y >= 0L ? y : 0L);
 		return pow(x,a);
 	}
 };
 
-typedef orbtree::orbmultisetC<unsigned int, orbtree::NVFunc_Adapter_Simple<orbtree::RankFunc<unsigned int> >, uint32_t > ranktree;
-typedef orbtree::orbmultisetC<int64_t, orbtree::NVFunc_Adapter_Vec<set_pow>, uint32_t> exptree;
+typedef orbtree::rankmultisetC<int64_t> ranktree;
+/*
+orbtree::orbtree< orbtree::NodeAllocatorCompact<  orbtree::KeyOnly<int64_t>, uint32_t, uint32_t, 0>,
+	std::less<int64_t>, orbtree::RankFunc2<int64_t, uint32_t>, true > ranktree; */
+typedef orbtree::orbmultisetC<int64_t, orbtree::NVPower2<int64_t> > exptree; /*
+typedef orbtree::orbtree< orbtree::NodeAllocatorCompact<orbtree::KeyOnly<int64_t>, double, uint32_t, 0>,
+		std::less<int64_t>, orbtree::NVFunc_Adapter_Vec<set_pow,double,int64_t, double >, true > exptree; */
 
 /* maps -- for more compact representation */
 struct map_rank {
+	unsigned int operator () (const std::pair<int64_t, unsigned int>& p) const { return p.second; }
 	typedef std::pair<int64_t, unsigned int> argument_type;
 	typedef unsigned int result_type;
-	unsigned int operator () (const std::pair<int64_t, unsigned int>& p) const { return p.second; }
 };
 struct map_pow {
-	typedef std::pair<int64_t, unsigned int> argument_type;
-	typedef double result_type;
-	typedef double ParType;
 	double operator () (const std::pair<int64_t, unsigned int>&p, double a) const {
 		double x = (double)(p.first >= 0L ? p.first : 0L);
 		double cnt = (double)(p.second);
@@ -85,8 +84,18 @@ struct map_pow {
 	}
 };
 
-typedef orbtree::orbmapC<int64_t, unsigned int, orbtree::NVFunc_Adapter_Simple<map_rank>, uint32_t> rankmap;
-typedef orbtree::orbmapC<int64_t, unsigned int, orbtree::NVFunc_Adapter_Vec<map_pow>, uint32_t> expmap;
+typedef orbtree::simple_mapC<int64_t, unsigned int, map_rank> rankmap;
+typedef orbtree::orbmapC<int64_t, unsigned int, orbtree::NVPowerMulti2<std::pair<int64_t, unsigned int> > > expmap;
+
+/*
+typedef orbtree::orbtree< orbtree::NodeAllocatorCompact<orbtree::KeyValue<int64_t, unsigned int>, uint32_t, uint32_t, 0>,
+		std::less<int64_t>, orbtree::NVFunc_Adapter_Simple<map_rank, uint32_t, std::pair<int64_t, unsigned int> >,
+		false > rankmap;
+typedef orbtree::orbtree< orbtree::NodeAllocatorCompact<orbtree::KeyValue<int64_t, unsigned int>, double, uint32_t, 0>,
+		std::less<int64_t>, orbtree::NVFunc_Adapter_Vec<map_pow,double,std::pair<int64_t,unsigned int>, double >,
+		false > expmap;
+*/
+
 
 template<class tree>
 inline void remove_balance_tree(tree& t, int64_t bal) {
@@ -110,7 +119,7 @@ inline void remove_balance_map(tree& t, int64_t bal) {
 template<class tree>
 inline void add_balance_map(tree& t, int64_t bal) {
 	/* try to insert */
-	auto res = t.insert(std::pair<int64_t,unsigned int>(bal,1U));
+	auto res = t.insert(orbtree::trivial_pair<int64_t,unsigned int>(bal,1U));
 	if(!res.second) {
 		/* already exists, add one */
 		auto it = res.first;
@@ -236,6 +245,7 @@ int main(int argc, char **argv)
 				break;
 		case 't':
 			thres = strtoll(argv[i+1],0,10);
+			i++;
 			break;
 		case 'f':
 			forget_old = true;
@@ -308,8 +318,8 @@ int main(int argc, char **argv)
 	}
 	
 	/* trees -- only one is used depending if exponents are given or not (a has >0 elements) */
-	orbtree::NVFunc_Adapter_Vec<set_pow> p(a);
-	orbtree::NVFunc_Adapter_Vec<map_pow> p2(a);
+	orbtree::NVPower2<int64_t> p(a);
+	orbtree::NVPowerMulti2<std::pair<int64_t, unsigned int> > p2(a);
 	ranktree rt;
 	rankmap rmap;
 	exptree et(p);
@@ -328,7 +338,7 @@ int main(int argc, char **argv)
 	if(ftxout) {
 		if(in_zip) {
 			sprintf(fntmp,"%s %s",zcat,ftxout);
-			in = popen(fntmp,"r");
+			out = popen(fntmp,"r");
 		}
 		else out = fopen(ftxout,"r");
 	}
