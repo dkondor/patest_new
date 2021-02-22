@@ -455,15 +455,18 @@ int main(int argc, char **argv)
 			{ //időpont frissítése
 				unsigned int t2 = ee->e[eid].timestamp;
 				ee->e[eid].timestamp = timestamp;
-				if( (delay == 0 && t2 == 0) || t2 < time1) { //nem aktív ez az él
-					r = eh.add(eid); //hozzá kell adni a heap-hoz
-					if(r) break; //hiba
-					if(t2 == 0) new1 = 2; //még egyszer sem volt aktív
-					else new1 = 1; //korábban már aktív volt, de már deaktiváltuk
-				}
-				else { //még aktív, az időpontot kell csak frissíteni
-					uint64_t off = ee->e[eid].offset;
-					eh.heapdown(off); //csak lefelé mehet, az új timestamp nagyobb
+				if(delay == 0) { if(t2 == 0) new1 = 2; } // új él
+				else { // delay > 0, a heap-et is frissíteni kell
+					if(t2 < time1) { //nem aktív ez az él
+						r = eh.add(eid); //hozzá kell adni a heap-hoz
+						if(r) break; //hiba
+						if(t2 == 0) new1 = 2; //még egyszer sem volt aktív
+						else new1 = 1; //korábban már aktív volt, de már deaktiváltuk
+					}
+					else { //még aktív, az időpontot kell csak frissíteni
+						uint64_t off = ee->e[eid].offset;
+						eh.heapdown(off); //csak lefelé mehet, az új timestamp nagyobb
+					}
 				}
 			}
 			
