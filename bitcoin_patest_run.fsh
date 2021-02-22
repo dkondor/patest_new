@@ -126,5 +126,19 @@ end
 
 
 
+########################################################################
+# 4. preferential attachment test for balances
+mkdir -p $DATADIR/ptb_run
+
+# Two versions: in the first case, all balances with > 2 Satoshi are used; in the second case,
+# balances that exactly correspond to mining rewards are left out, since these affect the
+# total balance distribution too much.
+# The second version is the one used in our paper.
+
+# run for all balances
+patestrun/ptb -i $INDIR/bitcoin_2020_txin.dat.xz -o $INDIR/bitcoin_2020_txout.dat.xz -O $DATADIR/ptb_run/ptb1 -m -f -t 2 -X -a $AA -D 1000000 -H
+# same, but leave out balances exactly equal to mining rewards (these significantly affect the distributions)
+patestrun/ptb -i $INDIR/bitcoin_2020_txin.dat.xz -o $INDIR/bitcoin_2020_txout.dat.xz -O $DATADIR/ptb_run/ptb1e -m -f -t 2  -Z -a $AA -D 1000000 -H -e 5000000000 2500000000 1250000000 625000000
+
 
 
