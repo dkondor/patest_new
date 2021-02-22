@@ -78,6 +78,7 @@ bool read_out(read_table2& rt, record& r) {
 
 static char gzip0[] = "/bin/gzip -c";
 static char zcat[] = "/bin/zcat";
+static char xzcat[] = "/usr/bin/xzcat";
 
 static int strtodint(char* a,unsigned int* delay) {
 	char* a1 = 0;
@@ -135,6 +136,7 @@ int main(int argc, char **argv)
 	
 	time_t t1 = time(0);
 	bool in_zip = false; //bemeneti fájlok tömörítve
+	bool in_xz = false; //input compressed by xz
 	
 	/* write out balance distribution this often (default: 1 year) */
 	unsigned int interval = 31536000;
@@ -161,6 +163,9 @@ int main(int argc, char **argv)
 		case 'Z':
 			in_zip = true;
 			break;
+		case 'X':
+			in_xz = true;
+			break;
 		case 't':
 			ftxtime = argv[i+1];
 			i++;
@@ -174,7 +179,7 @@ int main(int argc, char **argv)
 	DENEXT = DE1;
 	
 	char* fntmp = 0;
-	if(in_zip) {
+	if(in_zip || in_xz) {
 		unsigned int l1 = ftxin ? strlen(ftxin) : 0;
 		unsigned int l2 = ftxout ? strlen(ftxout) : 0;
 		unsigned int l3 = ftxtime ? strlen(ftxtime) : 0;
@@ -182,7 +187,7 @@ int main(int argc, char **argv)
 		if(l3 > l1) l1 = l3;
 		
 		if(l1) {
-			fntmp = (char*)malloc(sizeof(char)*(l1 + strlen(zcat) + 4));
+			fntmp = (char*)malloc(sizeof(char)*(l1 + strlen(xzcat) + 4));
 			if(!fntmp) {
 				fprintf(stderr,"Nem sikerült memóriát lefoglalni!\n");
 				return 2;
@@ -192,8 +197,8 @@ int main(int argc, char **argv)
 	
 	FILE* in = 0;
 	if(ftxin) {
-		if(in_zip) {
-			sprintf(fntmp,"%s %s",zcat,ftxin);
+		if(in_zip || in_xz) {
+			sprintf(fntmp,"%s %s",in_xz ? xzcat : zcat,ftxin);
 			in = popen(fntmp,"r");
 		}
 		else in = fopen(ftxin,"r");
@@ -201,8 +206,8 @@ int main(int argc, char **argv)
 	else in = stdin;
 	FILE* out = 0;
 	if(ftxout) {
-		if(in_zip) {
-			sprintf(fntmp,"%s %s",zcat,ftxout);
+		if(in_zip || in_xz) {
+			sprintf(fntmp,"%s %s",in_xz ? xzcat : zcat,ftxout);
 			out = popen(fntmp,"r");
 		}
 		else out = fopen(ftxout,"r");
@@ -210,12 +215,12 @@ int main(int argc, char **argv)
 	else out = stdin;
 	FILE* ftt = 0;
 	if(ftxtime) {
-		if(in_zip) {
+		if(in_zip || in_xz) {
 			sprintf(fntmp,"%s %s",zcat,ftxtime);
 			ftt = popen(fntmp,"r");
 		}
 	}
-	else ftt = stdout;
+	else ftt = stdin;
 	if(fntmp) free(fntmp);
 	
 	size_t txin = 0;
@@ -325,13 +330,17 @@ int main(int argc, char **argv)
 		r = 1;
 	}
 	
-	if(in) {
-		if(in_zip) pclose(in);
+	if(in && in != stdin) {
+		if(in_zip || in_xz) pclose(in);
 		else fclose(in);
 	}
 	if(out && out != stdin) {
-		if(in_zip) pclose(out);
+		if(in_zip || in_xz) pclose(out);
 		else fclose(out);
+	}
+	if(ftt && ftt != stdin) {
+		if(in_zip || in_xz) pclose(ftt);
+		else fclose(ftt);
 	}
 	
 	fprintf(stderr,"feldolgozott bemenetek: %lu, kimenetek: %lu\n",txin,txout);
