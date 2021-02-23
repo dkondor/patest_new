@@ -300,4 +300,79 @@ end
 
 
 
+########################################################################
+# 4. Indegree distributions
+set times (for a in $DATADIR/indeg_dists/*
+basename $a .dat
+end | cut -d _ -f 2)
+set ntimes (count $times)
+
+# dates to display
+set ixt 1 2 3 5 7 9 12
+
+begin
+echo se te unknown
+echo se xl \'indegree\'
+echo se yl \'frequency\' off 1
+echo se ytics format \'%g\'
+echo se log xy
+echo se xr [1:]
+echo se yr [1:2]
+echo p 1/0 not
+echo se auto y
+echo se yr [:1e9]
+for k in (seq (count $ixt))
+set dt (date -d @$times[$ixt[$k]] -u +%Y)
+echo rep \'$DATADIR/indeg_dists/dist_$times[$ixt[$k]].dat\' u \(\(\$1+\$2\)/2.0\):\(\$3/\(\$2-\$1\)\) w lp lw 3 pt 5 lc rgbcolor \'\#$colors[$k]\' t \'$dt\'
+end
+
+# note: fit done with an external utility
+echo a = -2.68064
+echo b = 3e11
+echo rep b\*x\*\*a w l lw 2 lc -1 not
+
+echo se te post eps color solid size 3.2,2.2
+echo se out \"$DATADIR/bitcoin_indeg.eps\"
+echo rep
+echo se out
+end | gnuplot ^ /dev/null
+epstopdf $DATADIR/bitcoin_indeg.eps
+convert -density 300 $DATADIR/bitcoin_indeg.eps -bordercolor white -border 0x0 -alpha remove $DATADIR/bitcoin_indeg.png
+
+
+
+########################################################################
+# 5. Balance distributions
+
+set times (for a in $DATADIR/balance_dists/*
+basename $a .dat
+end | cut -d _ -f 2)
+set ntimes (count $times)
+
+# dates to display
+set ixt 2 3 5 7 9 11
+
+begin
+echo se te unknown
+echo se xl \'balance [BTC]\'
+echo se yl \'frequency\' off 1
+echo se ytics format \'%g\'
+echo se log xy
+echo se xr [1:]
+echo se yr [1:2]
+echo p 1/0 not
+echo se auto y
+for k in (seq (count $ixt))
+set dt (date -d @$times[$ixt[$k]] -u +%Y)
+echo rep \'$DATADIR/balance_dists/dist_$times[$ixt[$k]].dat\' u \(\(\$1+\$2\)/2e8\):\(\$3 \> 0 \? \(1e8\*\$3/\(\$2-\$1\)\) : 1/0\) w lp lw 3 pt 5 lc rgbcolor \'\#$colors[$k]\' t \'$dt\'
+end
+
+echo se te post eps color solid size 3.2,2.2
+echo se out \"$DATADIR/bitcoin_balances.eps\"
+echo rep
+echo se out
+end | gnuplot ^ /dev/null
+epstopdf $DATADIR/bitcoin_balances.eps
+convert -density 300 $DATADIR/bitcoin_balances.eps -bordercolor white -border 0x0 -alpha remove $DATADIR/bitcoin_balances.png
+
 

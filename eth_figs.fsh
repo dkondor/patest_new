@@ -270,3 +270,83 @@ convert -density 300 $outdir/ethereum_exp_multi_legend.eps -bordercolor white -b
 end
 end
 
+
+
+
+########################################################################
+# 3. indegree distributions, separately for contracts and addresses
+
+
+
+set times (for a in $DATADIR/indeg_dist/dist_addresses*
+basename $a .dat
+end | cut -d _ -f 3)
+set ntimes (count $times)
+
+begin
+echo se te unknown
+echo se xl \'address indegree\'
+echo se yl \'frequency\' off 1
+echo se ytics format \'%g\'
+echo se xr [1:]
+echo se yr [1:2]
+echo p 1/0 not
+echo se auto y
+echo se yr [:1e8]
+echo se log xy
+for k in (seq $ntimes)
+set dt (date -d @$times[$k] -u +%Y)
+echo rep \'$DATADIR/indeg_dist/dist_addresses_$times[$k].dat\' u \(\(\$1+\$2\)/2.0\):\(\$3/\(\$2-\$1\)\) w lp lw 3 pt 5 lc rgbcolor \'\#$colors[$k]\' t \'$dt\'
+end
+
+# note: fit done externally
+echo a = -2.53542
+echo b = 5e9
+echo rep b\*x\*\*a w l lw 2 lc -1 not
+
+echo se te post eps color solid size 3.2,2.2
+echo se out \"$DATADIR/eth_indeg_addr.eps\"
+echo rep
+echo se out
+end | gnuplot ^ /dev/null
+
+epstopdf $DATADIR/eth_indeg_addr.eps
+convert -density 300 $DATADIR/eth_indeg_addr.eps -bordercolor white -border 0x0 -alpha remove $DATADIR/eth_indeg_addr.png
+
+
+set times (for a in $DATADIR/indeg_dist/dist_contracts*
+basename $a .dat
+end | cut -d _ -f 3)
+set ntimes (count $times)
+
+begin
+echo se te unknown
+echo se xl \'contract indegree\'
+echo se yl \'frequency\' off 1
+echo se ytics format \'%g\'
+echo se xr [1:]
+echo se yr [1:2]
+echo p 1/0 not
+echo se auto y
+echo se yr [:1e6]
+echo se log xy
+for k in (seq $ntimes)
+set dt (date -d @$times[$k] -u +%Y)
+echo rep \'$DATADIR/indeg_dist/dist_contracts_$times[$k].dat\' u \(\(\$1+\$2\)/2.0\):\(\$3/\(\$2-\$1\)\) w lp lw 3 pt 5 lc rgbcolor \'\#$colors[$k]\' t \'$dt\'
+end
+
+# note: fit done externally
+echo a = -2.19452
+echo b = 2e8
+echo rep b\*x\*\*a w l lw 2 lc -1 not
+
+echo se te post eps color solid size 3.2,2.2
+echo se out \"$DATADIR/eth_indeg_contracts.eps\"
+echo rep
+echo se out
+end | gnuplot ^ /dev/null
+
+epstopdf $DATADIR/eth_indeg_contracts.eps
+convert -density 300 $DATADIR/eth_indeg_contracts.eps -bordercolor white -border 0x0 -alpha remove $DATADIR/eth_indeg_contracts.png
+
+

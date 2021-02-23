@@ -156,3 +156,20 @@ end
 end
 
 
+########################################################################
+# 4. Calculate indegree distributions
+
+# create degree distributions separately for addresses and contracts
+zcat $DATADIR/patestgen_all.out.gz | awk '{if($1 == 1 && $4 == 0) print $1, $2, $3;}' | misc/indeg_dist -S | xz > $DATADIR/indeg_dist_all_addresses.out.xz
+zcat $DATADIR/patestgen_all.out.gz | awk '{if($1 == 1 && $4 == 1) print $1, $2, $3;}' | misc/indeg_dist -S | xz > $DATADIR/indeg_dist_all_contracts.out.xz
+
+# process these -- create binned distributions for plotting
+mkdir $DATADIR/indeg_dist
+xzcat $DATADIR/indeg_dist_all_addresses.out.xz | awk -v datadir=$DATADIR 'BEGIN{ts = 0; min1 = 1; d1 = 1;}{if(ts != $1) { if(ts > 0) { if(cnt > 0) print min,min+d,cnt >> outf; } min = min1; d = d1; cnt = 0; outf = datadir"/indeg_dist/dist_addresses_"$1".dat"; ts = $1; } if($2 > min + d) { print min, min+d, cnt >> outf; cnt = 0; min += d; d *= 2; } cnt += $3; }END{ if(cnt > 0) print min,min+d,cnt >> outf; }'
+xzcat $DATADIR/indeg_dist_all_contracts.out.xz | awk -v datadir=$DATADIR 'BEGIN{ts = 0; min1 = 1; d1 = 1;}{if(ts != $1) { if(ts > 0) { if(cnt > 0) print min,min+d,cnt >> outf; } min = min1; d = d1; cnt = 0; outf = datadir"/indeg_dist/dist_contracts_"$1".dat"; ts = $1; } if($2 > min + d) { print min, min+d, cnt >> outf; cnt = 0; min += d; d *= 2; } cnt += $3; }END{ if(cnt > 0) print min,min+d,cnt >> outf; }'
+
+
+
+
+
+

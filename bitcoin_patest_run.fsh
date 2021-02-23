@@ -165,3 +165,25 @@ end > $DATADIR/ptb_run/ptb"$b"w-summary.out
 end
 
 
+
+
+########################################################################
+# 5. misc: create indegree and balance distributions
+
+# indegree distribution (edges have unlimited lifetime -- this could be repeated with other cases as well)
+zcat $DATADIR/patestgen_all.out.gz | misc/indeg_dist -S > $DATADIR/indeg_dist_all.out
+
+# balance distributions
+misc/bdist -i $INDIR/bitcoin_2020_txin.dat.xz -o $INDIR/bitcoin_2020_txout.dat.xz -t $DATADIR/txtime.dat.gz -X -D 10000000 | xz > $DATADIR/balances_all.out.xz
+
+
+# process these distributions -- logarithmic binning
+mkdir $DATADIR/indeg_dists
+mkdir $DATADIR/balance_dists
+
+awk -v datadir=$DATADIR 'BEGIN{ts = 0; min1 = 1; d1 = 1;}{if(ts != $1) { if(ts > 0) { if(cnt > 0) print min,min+d,cnt >> outf; } min = min1; d = d1; cnt = 0; outf = datadir"/indeg_dists/dist_"$1".dat"; ts = $1; } if($2 > min + d) { print min, min+d, cnt >> outf; cnt = 0; min += d; d *= 2; } cnt += $3; }END{ if(cnt > 0) print min,min+d,cnt >> outf; }' $DATADIR/indeg_dist_all.out
+
+xzcat $DATADIR/balances_all.out.xz | awk -v datadir=$DATADIR 'BEGIN{ts = 0; min1 = 1; d1 = 1;}{if(ts != $1) { if(ts > 0) { if(cnt > 0) print min,min+d,cnt >> outf; } min = min1; d = d1; cnt = 0; outf = datadir"/balance_dists/dist_"$1".dat"; ts = $1; } if($2 > min + d) { print min, min+d, cnt >> outf; cnt = 0; min += d; d *= 2; } cnt += $3; }END{ if(cnt > 0) print min,min+d,cnt >> outf; }'
+
+
+
