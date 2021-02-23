@@ -135,10 +135,33 @@ mkdir -p $DATADIR/ptb_run
 # total balance distribution too much.
 # The second version is the one used in our paper.
 
+# The runtime of these is approximately 9 hours, and memory usage is ~1.7 GiB
+
 # run for all balances
 patestrun/ptb -i $INDIR/bitcoin_2020_txin.dat.xz -o $INDIR/bitcoin_2020_txout.dat.xz -O $DATADIR/ptb_run/ptb1 -m -f -t 2 -X -a $AA -D 1000000 -H
 # same, but leave out balances exactly equal to mining rewards (these significantly affect the distributions)
-patestrun/ptb -i $INDIR/bitcoin_2020_txin.dat.xz -o $INDIR/bitcoin_2020_txout.dat.xz -O $DATADIR/ptb_run/ptb1e -m -f -t 2  -Z -a $AA -D 1000000 -H -e 5000000000 2500000000 1250000000 625000000
+patestrun/ptb -i $INDIR/bitcoin_2020_txin.dat.xz -o $INDIR/bitcoin_2020_txout.dat.xz -O $DATADIR/ptb_run/ptb1e -m -f -t 2  -X -a $AA -D 1000000 -H -e 5000000000 2500000000 1250000000 625000000
 
+
+# 4.1. process these results -> CDF of transformed ranks
+for a in $AA
+for b in 1 1e
+mawk 'BEGIN{OFS="\t"; print 0,0,0;}{s += $2; s2 += $4; print $1,s/$3,s2/$5;}END{print 1,1,1;}' $DATADIR/ptb_run/ptb"$b"-"$a".dat > $DATADIR/ptb_run/ptb"$b"-"$a".cdf
+end
+end
+
+# 4.2. K-S differences
+# note: we consider two additional versions, depending on whether we weight
+# the probability of events with the actual balance transferred
+for b in 1 1e
+for a in $AA
+echo -ne $a\t
+tail -n +2 $DATADIR/ptb_run/ptb"$b"-"$a".cdf | awk -v OFS='\t' 'BEGIN{y1 = 0; max = 0; }{y = y1 + (1-y1)*$1; diff = $2 - y; if(diff < 0) diff *= -1; if(diff > max) max = diff;}END{print y1, max;}'
+end > $DATADIR/ptb_run/ptb"$b"-summary.out
+for a in $AA
+echo -ne $a\\t
+tail -n +2 $DATADIR/ptb_run/ptb"$b"-"$a".cdf | awk -v OFS='\t' 'BEGIN{y1 = 0; max = 0; }{y = y1 + (1-y1)*$1; diff = $3 - y; if(diff < 0) diff *= -1; if(diff > max) max = diff;}END{print y1, max;}'
+end > $DATADIR/ptb_run/ptb"$b"w-summary.out
+end
 
 

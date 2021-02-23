@@ -253,3 +253,51 @@ convert -density 300 $outdir/bitcoin_exp_multi_legend.eps -bordercolor white -bo
 end
 
 
+
+########################################################################
+# 3. preferential attachment testing for balance dynamics
+
+# 3.1. CDF of transformed ranks
+set outdir $DATADIR/ptb_run/ptb-figs
+mkdir -p $outdir
+
+# types of results:
+# 1. unweighted (i.e. each transaction is counted as one event), all addresses included in the balance distribution
+# 2. unweighted, addresses with exact mining rewards are excluded from the balance distribution
+# 3. weighted (each event is weighted by the amount transferred), all addresses included in the balance distribution
+# 4. weighted, addresses with exact mining rewards are excluded from the balance distribution
+# the last one is included in the paper
+set titles 'Bitcoin, balances, unweighted' 'Bitcoin, balances, unweighted' 'Bitcoin, balances, weighted' 'Bitcoin, balances, weighted'
+set names ptb1 ptb1e ptb1 ptb1e
+set col 2 2 3 3
+set outfn 1 1e 1w 1ew
+
+for i in 1 2 3 4
+set y1 (head -n 1 $DATADIR/ptb_run/$names[$i]-summary.out | cut -f 2)
+begin
+echo se te unknown
+echo se ke off
+echo se xl \'CDF\'
+echo se yl \'calculated rank\' off 1
+echo se xr [0:1]
+echo se yr [0:1]
+echo p 1 / 0 not
+for k in (seq (count $AA))
+echo rep \'$DATADIR/ptb_run/$names[$i]-$AA[$k].cdf\' u $col[$i]:1 w l lw 3 lc rgbcolor \'\#$colors[$k]\' t \'a = $AA[$k]\'
+end
+echo rep \(x - $y1\) / \(1 - $y1\) w l lw 2 lc -1 not
+echo se title \'$titles[$i]\'
+
+echo se te post eps color solid size 3.2,2.1
+echo se out \'$outdir/bitcoin_balances_$outfn[$i].eps\'
+echo rep
+echo se out
+end | gnuplot ^ /dev/null
+
+epstopdf $outdir/bitcoin_balances_$outfn[$i].eps
+convert -density 300 $outdir/bitcoin_balances_$outfn[$i].eps -bordercolor white -border 0x0 -alpha remove $outdir/bitcoin_balances_$outfn[$i].png
+end
+
+
+
+
