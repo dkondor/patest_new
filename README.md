@@ -8,6 +8,8 @@ The rich still get richer: Empirical comparison of preferential attachment via l
 Under review
 ```
 
+Data used in our analysis is available as separate downloads for [Bitcoin](https://doi.org/10.5061/dryad.qz612jmcf) and [Ethereum](https://zenodo.org/record/4543269).
+
 ## Programs included
 
 This repository includes various code, organized under the following subdirectories:
@@ -20,14 +22,15 @@ This repository includes various code, organized under the following subdirector
 - compile_programs.sh: Simple commands to compile all C++ code with GCC. Feel free to open an issue if you run into any issues or if you feel that using a build system should be necessary.
 
 ### Bitcoin
- 
+
+- bitcoin_download.fsh: Script to download Bitcoin data used in our paper from [Dryad](https://doi.org/10.5061/dryad.qz612jmcf).
 - bitcoin_preprocess.sh: Preprocessing needed to generate a list of edges from the list of transaction inputs and outputs.
 - bitcoin_patest_run.fsh: Main computations for calculating the transformed rank statistics.
 - bitcoin_figs.fsh: Script to generate the main figures in the paper and many additional variants.
 
 ### Ethereum
 
-- eth_download.sh: Script to download the Ethereum dataset used in our paper from Zenodo.
+- eth_download.sh: Script to download the Ethereum dataset used in our paper from [Zenodo](https://zenodo.org/record/4543269).
 - eth_preprocess.sh: Script to preprocess the Ethereum dataset to create properly sorted lists of edges.
 - eth_patest_run.fsh: Main computations for calculating the transformed rank statistics for Ethereum.
 - eth_figs.fsh: Script to generate the main figure in the paper and many additional variants.
