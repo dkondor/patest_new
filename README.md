@@ -2,11 +2,11 @@
 Programs to test preferential attachment in a growing network (new implementation in c++).
 
 This repository contains code and scripts that can be used to test for the presence of preferential attachment in growing networks such as Bitcoin and Ethereum. This code was used to create the main results in our upcoming paper:
-```
+
 Kondor D, Bulatovic N, Stéger J, Csabai I, Vattay G (2021).
 The rich still get richer: Empirical comparison of preferential attachment via linking statistics in Bitcoin and Ethereum.
-Under review
-```
+Under review.
+https://arxiv.org/abs/2102.12064
 
 Data used in our analysis is available as separate downloads for [Bitcoin](https://doi.org/10.5061/dryad.qz612jmcf) and [Ethereum](https://zenodo.org/record/4543269).
 
